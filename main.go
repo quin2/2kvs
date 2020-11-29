@@ -1,23 +1,23 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"encoding/json"
-	"errors"
 )
 
 type server struct{}
 
 type QUERY struct {
 	OPER string `json:"oper"`
-	K1 string `json:"k1"`
-	K2 string `json:"k2"`
+	K1   string `json:"k1"`
+	K2   string `json:"k2"`
 	DATA string `json:"data"`
 }
 
-type RESPONSE struct{
+type RESPONSE struct {
 	DATA TABLE `json:"data"`
 }
 
@@ -27,12 +27,16 @@ type TABLE []ROW
 
 var table TABLE
 
-func match(A1 string, A2 string, C ROW) bool{
-	if A1 != "" && A2 != "" && C[1] == A1 && C[2] == A2 {
+func match(A1 string, A2 string, C ROW) bool {
+	if A1 != "" && A2 != "" && C[0] == A1 && C[1] == A2 {
 		return true
 	}
 
-	if A1 != "" && A2 == "" && C[1] == A1 {
+	if A1 != "" && A2 == "" && C[0] == A1 {
+		return true
+	}
+
+	if A1 == "" && A2 != "" && C[1] == A2 {
 		return true
 	}
 
@@ -43,9 +47,14 @@ func match(A1 string, A2 string, C ROW) bool{
 	return false
 }
 
+func hello() int {
+	return 10
+}
+
+//TODO: add case to return empty slice if array is of size 1
 func remove(s TABLE, i int) TABLE {
-    s[len(s)-1], s[i] = s[i], s[len(s)-1]
-    return s[:len(s)-1]
+	s[len(s)-1], s[i] = s[i], s[len(s)-1]
+	return s[:len(s)-1]
 }
 
 func db_insert(K1 string, K2 string, D string) error {
@@ -64,11 +73,14 @@ func db_delete(K1 string, K2 string) error {
 		return errors.New("Missing Data")
 	}
 
-	for i, s := range table {
-		if match(K1, K2, s) {
-			remove(table, i)
+	c := 0
+	for i := 0; i < len(table); i++ {
+		if match(K1, K2, table[i]) {
+			table[c] = table[i]
+			c++
 		}
 	}
+	table = table[c:]
 
 	return nil
 }
@@ -90,17 +102,17 @@ func db_select(K1 string, K2 string) ([]byte, error) {
 	return b, nil
 }
 
-func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request){
+func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	//handle JSON here
 	if r.Method == http.MethodPost {
 		var q QUERY
 
 		r.Body = http.MaxBytesReader(w, r.Body, 1048576)
 		err := json.NewDecoder(r.Body).Decode(&q)
-	    if err != nil {
-	        http.Error(w, err.Error(), http.StatusBadRequest) //bad request body
-	        return
-	    }
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest) //bad request body
+			return
+		}
 
 		switch q.OPER {
 		case "INSERT":
@@ -124,25 +136,26 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request){
 				return
 			}
 			w.Header().Set("Content-Type", "application/json")
-	    	w.WriteHeader(http.StatusOK)
-	    	w.Write(data)
+			w.WriteHeader(http.StatusOK)
+			w.Write(data)
 		default:
 			w.WriteHeader(http.StatusNotImplemented)
 			return
 		}
+	} else {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 
-    w.WriteHeader(http.StatusMethodNotAllowed)
 	return
 }
 
-func reportError(w http.ResponseWriter, e error){
+func reportError(w http.ResponseWriter, e error) {
 	fmt.Println(e)
 	http.Error(w, e.Error(), http.StatusInternalServerError)
 	return
 }
 
-func main(){
+func main() {
 	s := &server{}
 	http.Handle("/", s)
 

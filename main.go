@@ -47,16 +47,6 @@ func match(A1 string, A2 string, C ROW) bool {
 	return false
 }
 
-func hello() int {
-	return 10
-}
-
-//TODO: add case to return empty slice if array is of size 1
-func remove(s TABLE, i int) TABLE {
-	s[len(s)-1], s[i] = s[i], s[len(s)-1]
-	return s[:len(s)-1]
-}
-
 func db_insert(K1 string, K2 string, D string) error {
 	if K1 == "" || K2 == "" || D == "" {
 		return errors.New("Missing Data")

@@ -31,3 +31,6 @@ or extend comparable to work with any data! type is key tuple
 m = make(map[string]map[string]string)
 
 issue with dual key: both values have to be eq, so we can't do something like k1 (any). no way to change this either in the spec 
+
+add mutex lock according to blog post above..
+allow byte string for JSON

@@ -24,18 +24,19 @@ type RESPONSE struct {
 type mytable map[string]map[string]string
 
 var m = make(mytable)
+var del = make(mytable)
 
-func db_insert(K1 string, K2 string, D string) error {
+func db_insert(ma *mytable, K1 string, K2 string, D string) error {
 	if K1 == "" || K2 == "" || D == "" {
 		return errors.New("Missing Data")
 	}
 
-	mm, ok := m[K1]
-    if !ok {
-        mm = make(map[string]string)
-        m[K1] = mm
-    }
-    mm[K2] = D
+	mm, ok := ma[K1]
+	if !ok {
+		mm = make(map[string]string)
+		ma[K1] = mm
+	}
+	mm[K2] = D
 
 	return nil
 }
@@ -45,21 +46,9 @@ func db_delete(K1 string, K2 string) error {
 		return errors.New("Missing Data")
 	}
 
-	if K1 != "" && K2 == "" {
-		delete(m, K1)
-	}
-
-	if K1 == "" && K2 != "" {
-		for k, _ := range m {
-			_, ok := m[k][K2]
-    		if ok {
-    			delete(m[k], K2)
-    		}
-		}
-	}
-
-	if K1 != "" && K2 != "" {
-		delete(m[K1], K2)
+	err := db_insert(&del, K1, K2, "remove")
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -80,16 +69,26 @@ func db_select(K1 string, K2 string) ([]byte, error) {
 	if K1 == "" && K2 != "" {
 		for k, _ := range m {
 			i, ok := m[k][K2]
-    		if ok {
-    			temp[k] = make(map[string]string)
-    			temp[k][K2] = i
-    		}
+			if ok {
+				temp[k] = make(map[string]string)
+				temp[k][K2] = i
+			}
 		}
 	}
 
 	if K1 != "" && K2 != "" {
 		temp[K1] = make(map[string]string)
 		temp[K1][K2] = m[K1][K2]
+	}
+
+	//look for tombstone values here TODO: make this faster
+	for k1, ok1 := range temp {
+		k2, ok2 := range temp[k1] {
+			_, check := del[k1][k2]
+			if check {
+				delete(temp[k1], k2)
+			}
+		}
 	}
 
 	b, err := json.Marshal(temp)
@@ -114,14 +113,14 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		switch q.OPER {
 		case "INSERT":
-			err := db_insert(q.K1, q.K2, q.DATA)
+			err := db_insert(&m, q.K1, q.K2, q.DATA)
 			if err != nil {
 				reportError(w, err)
 				return
 			}
 			w.WriteHeader(http.StatusCreated) //good request
 		case "DELETE":
-			err := db_delete(q.K1, q.K2)
+			err := db_delete(q.K1, q.K2) //find better value for tombstoning....
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return

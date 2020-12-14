@@ -165,7 +165,7 @@ func Test_DeleteData(t *testing.T) {
 	ts := httptest.NewServer(s)
 	defer ts.Close()
 
-	b := bytes.NewReader([]byte(`{"oper": "DELETE", "k1": "TestSandwitch"}`))
+	b := bytes.NewReader([]byte(`{"oper": "DELETE", "k1": "TestSandwitch", "k2": "bread"}`))
 	resp, err := http.Post(ts.URL, "application/JSON", b)
 
 	if err != nil {
@@ -184,7 +184,7 @@ func Test_DeleteData(t *testing.T) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	expect := []byte(`{"TestSandwitch":null}`)
+	expect := []byte(`{"TestSandwitch":{"cheese":"cheddar"}}`)
 
 	if !reflect.DeepEqual(body, expect) {
 		t.Errorf("Bad output, got %s, expected %s", body, expect)

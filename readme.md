@@ -1,13 +1,12 @@
-#2kvs
+#calmDB
 
-a simple flat-file database written in Go 
+a simple key-key-value database written in Go. Designed to be concurrent and fast, with a web-first HTTP frontend.
 
 ## examples 
 
 ```
 INSERT quinnvinlove name quinn
 
-DELETE quinnvinlove
 DELETE quinnvinlove name
 
 SELECT quinnvinlove
@@ -15,22 +14,11 @@ SELECT quinnvinlove name
 ```
 
 ## issues
-* needs docs
-* multiple values with the same key combo are just added, rather than swapped in. use a hash table?
-* only supports string for now 
-* in-memory only at the moment. 
-
-switch to golang maps https://blog.golang.org/maps issue is we can't have two keys...
-make one mega key? (then can't perform general lookups)
-
-use key for k1, and that map 
-
-or extend comparable to work with any data! type is key tuple
-
-
-m = make(map[string]map[string]string)
-
-issue with dual key: both values have to be eq, so we can't do something like k1 (any). no way to change this either in the spec 
-
-add mutex lock according to blog post above..
-allow byte string for JSON
+* needs better API docs
+* only supports string for now for value. allow byte object?
+* in-memory only at the moment
+* atomic delete no longer supported. should it be supported?
+* need way to clean out tombstone cache every so often, try gocron or similar?
+* make tombstoning faster
+* add mutex lock to map altering to make concurrent
+* (any) operation not supported for k2, but maybe I could make our hack more elegant

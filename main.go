@@ -26,7 +26,7 @@ type mytable map[string]map[string]string
 var m = make(mytable)
 var del = make(mytable)
 
-func db_insert(ma *mytable, K1 string, K2 string, D string) error {
+func db_insert(ma mytable, K1 string, K2 string, D string) error {
 	if K1 == "" || K2 == "" || D == "" {
 		return errors.New("Missing Data")
 	}
@@ -46,7 +46,7 @@ func db_delete(K1 string, K2 string) error {
 		return errors.New("Missing Data")
 	}
 
-	err := db_insert(&del, K1, K2, "remove")
+	err := db_insert(del, K1, K2, "remove")
 	if err != nil {
 		return err
 	}
@@ -82,12 +82,9 @@ func db_select(K1 string, K2 string) ([]byte, error) {
 	}
 
 	//look for tombstone values here TODO: make this faster
-	for k1, ok1 := range temp {
-		k2, ok2 := range temp[k1] {
-			_, check := del[k1][k2]
-			if check {
-				delete(temp[k1], k2)
-			}
+	for k1, _ := range del {
+		for k2, _ := range del[k1] {
+			delete(temp[k1], k2)
 		}
 	}
 
@@ -113,7 +110,7 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		switch q.OPER {
 		case "INSERT":
-			err := db_insert(&m, q.K1, q.K2, q.DATA)
+			err := db_insert(m, q.K1, q.K2, q.DATA)
 			if err != nil {
 				reportError(w, err)
 				return

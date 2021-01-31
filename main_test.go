@@ -66,7 +66,7 @@ func Test_SelectAllData(t *testing.T) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	expect := []byte(`{"data":[["TestSandwitch","bread","sourdough"],["TestSandwitch","cheese","cheddar"]]}`)
+	expect := []byte(`{"TestSandwitch":{"bread":"sourdough","cheese":"cheddar"}}`)
 
 	if !reflect.DeepEqual(body, expect) {
 		t.Errorf("Bad output, got %s, expected %s", body, expect)
@@ -93,7 +93,7 @@ func Test_SelectK1Data(t *testing.T) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	expect := []byte(`{"data":[["TestSalad","base","baby kale"]]}`)
+	expect := []byte(`{"TestSalad":{"base":"baby kale"}}`)
 
 	if !reflect.DeepEqual(body, expect) {
 		t.Errorf("Bad output, got %s, expected %s", body, expect)
@@ -113,7 +113,7 @@ func Test_SelectK2Data(t *testing.T) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	expect := []byte(`{"data":[["TestSandwitch","cheese","cheddar"]]}`)
+	expect := []byte(`{"TestSandwitch":{"cheese":"cheddar"}}`)
 
 	if !reflect.DeepEqual(body, expect) {
 		t.Errorf("Bad output, got %s, expected %s", body, expect)
@@ -133,7 +133,7 @@ func Test_SelectSpecificData(t *testing.T) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	expect := []byte(`{"data":[["TestSandwitch","bread","sourdough"]]}`)
+	expect := []byte(`{"TestSandwitch":{"bread":"sourdough"}}`)
 
 	if !reflect.DeepEqual(body, expect) {
 		t.Errorf("Bad output, got %s, expected %s", body, expect)
@@ -153,7 +153,7 @@ func Test_SelectNoData(t *testing.T) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	expect := []byte(`{"data":null}`)
+	expect := []byte(`{"TestSoup":null}`)
 
 	if !reflect.DeepEqual(body, expect) {
 		t.Errorf("Bad output, got %s, expected %s", body, expect)
@@ -165,7 +165,7 @@ func Test_DeleteData(t *testing.T) {
 	ts := httptest.NewServer(s)
 	defer ts.Close()
 
-	b := bytes.NewReader([]byte(`{"oper": "DELETE", "k1": "TestSandwitch"}`))
+	b := bytes.NewReader([]byte(`{"oper": "DELETE", "k1": "TestSandwitch", "k2": "bread"}`))
 	resp, err := http.Post(ts.URL, "application/JSON", b)
 
 	if err != nil {
@@ -184,7 +184,7 @@ func Test_DeleteData(t *testing.T) {
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	expect := []byte(`{"data":null}`)
+	expect := []byte(`{"TestSandwitch":{"cheese":"cheddar"}}`)
 
 	if !reflect.DeepEqual(body, expect) {
 		t.Errorf("Bad output, got %s, expected %s", body, expect)

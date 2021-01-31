@@ -18,42 +18,25 @@ type QUERY struct {
 }
 
 type RESPONSE struct {
-	DATA TABLE `json:"data"`
+	DATA mytable `json:"data"`
 }
 
-type ROW [3]string
+type mytable map[string]map[string]string
 
-type TABLE []ROW
+var m = make(mytable)
+var del = make(mytable)
 
-var table TABLE
-
-func match(A1 string, A2 string, C ROW) bool {
-	if A1 != "" && A2 != "" && C[0] == A1 && C[1] == A2 {
-		return true
-	}
-
-	if A1 != "" && A2 == "" && C[0] == A1 {
-		return true
-	}
-
-	if A1 == "" && A2 != "" && C[1] == A2 {
-		return true
-	}
-
-	if A1 == "" && A2 == "" {
-		return true
-	}
-
-	return false
-}
-
-func db_insert(K1 string, K2 string, D string) error {
+func db_insert(ma mytable, K1 string, K2 string, D string) error {
 	if K1 == "" || K2 == "" || D == "" {
 		return errors.New("Missing Data")
 	}
 
-	row := ROW{K1, K2, D}
-	table = append(table, row)
+	mm, ok := ma[K1]
+	if !ok {
+		mm = make(map[string]string)
+		ma[K1] = mm
+	}
+	mm[K2] = D
 
 	return nil
 }
@@ -63,28 +46,49 @@ func db_delete(K1 string, K2 string) error {
 		return errors.New("Missing Data")
 	}
 
-	c := 0
-	for i := 0; i < len(table); i++ {
-		if match(K1, K2, table[i]) {
-			table[c] = table[i]
-			c++
-		}
+	err := db_insert(del, K1, K2, "remove")
+	if err != nil {
+		return err
 	}
-	table = table[c:]
 
 	return nil
 }
 
 func db_select(K1 string, K2 string) ([]byte, error) {
-	var resp RESPONSE
+	var temp mytable
+	temp = make(mytable)
 
-	for _, s := range table {
-		if match(K1, K2, s) {
-			resp.DATA = append(resp.DATA, s)
+	if K1 == "" && K2 == "" {
+		temp = m
+	}
+
+	if K1 != "" && K2 == "" {
+		temp[K1] = m[K1]
+	}
+
+	if K1 == "" && K2 != "" {
+		for k, _ := range m {
+			i, ok := m[k][K2]
+			if ok {
+				temp[k] = make(map[string]string)
+				temp[k][K2] = i
+			}
 		}
 	}
 
-	b, err := json.Marshal(resp)
+	if K1 != "" && K2 != "" {
+		temp[K1] = make(map[string]string)
+		temp[K1][K2] = m[K1][K2]
+	}
+
+	//look for tombstone values here TODO: make this faster
+	for k1, _ := range del {
+		for k2, _ := range del[k1] {
+			delete(temp[k1], k2)
+		}
+	}
+
+	b, err := json.Marshal(temp)
 	if err != nil {
 		return nil, err
 	}
@@ -106,14 +110,14 @@ func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		switch q.OPER {
 		case "INSERT":
-			err := db_insert(q.K1, q.K2, q.DATA)
+			err := db_insert(m, q.K1, q.K2, q.DATA)
 			if err != nil {
 				reportError(w, err)
 				return
 			}
 			w.WriteHeader(http.StatusCreated) //good request
 		case "DELETE":
-			err := db_delete(q.K1, q.K2)
+			err := db_delete(q.K1, q.K2) //find better value for tombstoning....
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
